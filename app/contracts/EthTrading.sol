@@ -138,10 +138,61 @@ contract coinExchange{
     uint _amountLeftToBuy = amount;
     uint idCounter = lastSOrderId;
 
+    if (centralBankLink.coinBalanceOf(msg.sender,currency1) >= amount && amount > 0 ){
+      while (_amountLeftToBuy > 0){
+        if (sellorders[idCounter].price <= price && sellorders[idCounter].currency1 > amount) {
+          sellorders[idCounter].currency1 = sellorders[idCounter].currency1 - amount; 
+          newTransaction(amount,sellorders[idCounter].price,sellorders[idCounter].trader,"buy");
+          centralBankLink.sendCoin(amount*sellorders[idCounter].price,msg.sender,currency2);
+          centralBankLink.sendCoinFrom(this,amount,msg.sender,currency1);
+          _amountLeftToBuy = 0;
+        }
+        else if (sellorders[idCounter].price <= price && sellorders[idCounter].currency1 < amount) {
+          _amountLeftToBuy =  amount - sellorders[idCounter].currency1;
+          newTransaction(_amountLeftToBuy,sellorders[idCounter].price,sellorders[idCounter].trader,"buy");
+          centralBankLink.sendCoin(sellorders[idCounter].currency1 * sellorders[idCounter].price,msg.sender,currency2);
+          centralBankLink.sendCoinFrom(this,sellorders[idCounter].currency1,msg.sender,currency1);
+          idCounter--; 
+        }
+        else if (sellorders[idCounter].price > price){
+          centralBankLink.sendCoin(_amountLeftToBuy,msg.sender,currency2);
+          newBuyOrder(_amountLeftToBuy,price,currency2);
+          _amountLeftToBuy = 0;
+        }
+      }   
+    }
+    else {
+      return;
+    }
   }
     function sell(uint amount, uint price, uint currency1, uint currency2){
     daBank centralBankLink = daBank(centralBankContract);
     uint _amountLeftToSell = amount;
     uint idCounter = lastBOrderId;
+    if (centralBankLink.coinBalanceOf(msg.sender,currency1) >= amount && amount > 0 ){
+      while (_amountLeftToSell > 0){
+        if (buyorders[idCounter].price >= price && buyorders[idCounter].currency1 > amount) {
+          buyorders[idCounter].currency1 = buyorders[idCounter].currency1 - amount; 
+          newTransaction(amount,buyorders[idCounter].price,buyorders[idCounter].trader,"sell");
+          centralBankLink.sendCoin(amount,msg.sender,currency1);
+          centralBankLink.sendCoinFrom(this,amount*buyorders[idCounter].price,msg.sender,currency2);
+          _amountLeftToSell = 0;
+        }
+        else if (buyorders[idCounter].price >= price && buyorders[idCounter].currency1 < amount) {
+          _amountLeftToSell =  amount - buyorders[idCounter].currency1;
+          newTransaction(_amountLeftToSell,buyorders[idCounter].price,buyorders[idCounter].trader,"sell");
+          centralBankLink.sendCoin(buyorders[idCounter].currency1,msg.sender,currency1);
+          centralBankLink.sendCoinFrom(this,buyorders[idCounter].currency2,msg.sender,currency2);
+          idCounter--; 
+        }
+        else if (buyorders[idCounter].price > price){
+          newSellOrder(_amountLeftToSell,price,currency1);
+          _amountLeftToSell = 0;
+        }
+      }   
+    }
+    else {
+      return;
+    }
   }
 }
